@@ -1,0 +1,18 @@
+# Virtual environment
+.venv/
+
+# Output data
+data/output_frames/
+data/output/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Video soubory
+*.mp4
+*.avi
+
+# IDE
+.vscode/
