@@ -1,0 +1,26 @@
+# LPM SDK nastavení
+lpm:
+  module_id: 802
+  version: 7
+  det_compute_on_gpu: false
+  det_num_threads: 1
+  ocr_compute_on_gpu: false
+  ocr_num_threads: 1
+
+# Detekce
+detection:
+  min_confidence: 0.4
+  redetect_every_n: 15
+  min_face_ratio: 0.03
+  nms_iou_threshold: 0.3
+
+# Tracker
+tracker:
+  type: csrt          # csrt | kcf | kalman
+  lost_timeout: 20
+
+# Výstup
+output:
+  save_all_frames: true
+  show_bounding_boxes: true
+  blur_strength: 51
