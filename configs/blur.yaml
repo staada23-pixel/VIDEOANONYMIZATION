@@ -1,0 +1,16 @@
+# Per-method blur parametry. Tento soubor můžeš načíst z CLI přes
+#   --blur-config configs/blur.yaml
+# a přebije sekci `blur` v configs/config.yaml.
+
+pixelate:
+  block: 18            # velikost dlaždice v pixelech (větší = silnější)
+
+gaussian:
+  ksize: 51            # jádro (musí být liché)
+  sigma: 0             # 0 = autodetect z ksize
+
+blackout:
+  color: [0, 0, 0]     # BGR; defaultně černá
+
+none:
+  # žádná anonymizace, pouze vizualizace bboxu

@@ -66,12 +66,11 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QImage, QPixmap, QColor, QPainter, QPen, QFont
 from PyQt6.QtCore import Qt, QTimer
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from models.detection import Detection
+from video_anonymizer.detection.detection_model import Detection
 
 logger.info("Loading detector...")
 try:
-    from detector.face_hand_detector import FaceHandDetector
+    from video_anonymizer.detection.mediapipe_detector import FaceHandDetector
     DETECTOR_AVAILABLE = True
     logger.info("✓ Detector module loaded successfully")
 except ImportError as e:

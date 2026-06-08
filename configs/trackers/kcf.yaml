@@ -1,0 +1,5 @@
+# KCF (Kernelized Correlation Filter) tracker configuration
+# OpenCV implementace — rychlejší než CSRT, ale méně přesný při rotaci/škálování
+type: kcf
+
+lost_timeout: 20

@@ -1,0 +1,17 @@
+# Kalman tracker configuration
+# Jednoduchý 2D Kalman filter sledující (cx, cy, w, h, vx, vy)
+type: kalman
+
+# Šum procesu (vyšší = reaktivnější, ale hlučnější)
+process_noise:
+  position: 1.0
+  velocity: 0.1
+  size: 1.0
+
+# Šum měření (vyšší = důvěřuje predikci víc než detekci)
+measurement_noise:
+  position: 10.0
+  size: 10.0
+
+# Kolik framů bez updatu než je track prohlášen za ztracený
+lost_timeout: 20

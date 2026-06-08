@@ -9,7 +9,7 @@ source .venv/bin/activate 2>/dev/null || .venv\Scripts\activate
 
 echo "Instalace závislostí..."
 pip install --upgrade pip
-pip install opencv-contrib-python pillow filterpy cffi numpy
+pip install opencv-contrib-python pillow filterpy cffi numpy pyyaml
 
 echo "Hotovo! Aktivuj prostředí příkazem:"
 echo "  source .venv/bin/activate  (Linux/Mac)"

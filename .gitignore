@@ -4,6 +4,7 @@
 # Output data
 data/output_frames/
 data/output/
+output_video_frames/
 
 # Python cache
 __pycache__/

@@ -57,7 +57,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from models.detection import Detection
+from .detection_model import Detection
 
 # STEP 1: Import MediaPipe
 # This "try-except" block attempts to import MediaPipe

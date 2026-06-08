@@ -17,8 +17,8 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from models.detection import Detection
-from gui.detection_viewer import DetectionViewer
+from video_anonymizer.detection.detection_model import Detection
+from video_anonymizer.gui.detection_viewer import DetectionViewer
 from PyQt6.QtWidgets import QApplication
 
 

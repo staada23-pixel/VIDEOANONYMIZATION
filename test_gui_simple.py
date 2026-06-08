@@ -35,7 +35,7 @@ from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import Qt
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from models.detection import Detection
+from video_anonymizer.detection.detection_model import Detection
 
 
 class SimpleDetectionViewer(QMainWindow):
