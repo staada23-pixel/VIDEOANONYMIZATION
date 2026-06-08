@@ -43,6 +43,9 @@ from .tracking.kcf import KCFTracker
 from .tracking.iou_tracker import IOUTracker
 from .tracking.track import Track
 from .detection.detection_model import Detection
+from .utils.hardware import (detect_hardware, recommend_compute_mode,
+                             apply_compute_mode, format_hardware_report,
+                             COMPUTE_MODES)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -64,6 +67,7 @@ def load_config(path):
 
 def _default_config():
     return {
+        "compute": {"mode": "auto", "lpm_det_num_threads": 0},
         "lpm": {"module_id": 802, "version": 7,
                 "det_compute_on_gpu": False, "det_num_threads": 1,
                 "ocr_compute_on_gpu": False, "ocr_num_threads": 1},
@@ -169,6 +173,22 @@ def cmd_run(args, log):
         first = cv2.imread(str(source[0]))
         frame_size = (first.shape[1], first.shape[0])
         log.info("Image dir: %d frames, size %dx%d", len(source), *frame_size)
+
+    compute_cfg = cfg.get("compute", {})
+    compute_mode = args.compute or compute_cfg.get("mode", "auto")
+    hw, resolved_mode = apply_compute_mode(compute_mode, log)
+    if resolved_mode == "gpu":
+        lpm_cfg_ov = cfg.setdefault("lpm", {})
+        lpm_cfg_ov["det_compute_on_gpu"] = True
+        lpm_cfg_ov["det_num_threads"] = max(1, (hw["cpu"]["cores"] // 2))
+    else:
+        threads = compute_cfg.get("lpm_det_num_threads", 0)
+        if threads == 0:
+            threads = hw["cpu"]["cores"]
+        lpm_cfg_ov = cfg.setdefault("lpm", {})
+        lpm_cfg_ov["det_compute_on_gpu"] = False
+        lpm_cfg_ov["det_num_threads"] = threads
+    log.info("Hardware: %s", format_hardware_report(hw).replace("\n", " | "))
 
     det_cfg = cfg.get("detection", {})
     trk_cfg = cfg.get("tracker", {})
@@ -361,14 +381,23 @@ def cmd_run(args, log):
 def cmd_info(args, log):
     cfg = load_config(args.config)
     log.info("Loaded config from: %s", args.config or DEFAULT_CONFIG)
-    for key in ("lpm", "detection", "tracker", "blur", "visualisation",
-                "input", "output"):
+    for key in ("compute", "lpm", "detection", "tracker", "blur",
+                "visualisation", "input", "output"):
         log.info("%-14s %s", key + ":", cfg.get(key))
     return 0
 
 
 def cmd_blur_info(args, log):
     log.info("Blur methods: %s", ", ".join(BLUR_METHODS))
+    return 0
+
+
+def cmd_hardware_info(args, log):
+    hw = detect_hardware()
+    for line in format_hardware_report(hw).split("\n"):
+        log.info(line)
+    recommended = recommend_compute_mode(hw, "auto")
+    log.info("Doporučený režim: %s", recommended.upper())
     return 0
 
 
@@ -570,6 +599,7 @@ def _print_summary(spec):
         ("Typ vstupu",     spec.get("input_type") or "auto"),
         ("Detektor",       spec.get("detector") or "lpm"),
         ("Tracker",        spec.get("tracker") or "csrt"),
+        ("Compute",        (spec.get("compute") or "auto").upper()),
         ("Blur",           spec.get("blur_method") or "pixelate"),
         ("Výstup (frames)", spec.get("output_frames") or "data/output_frames"),
         ("Výstup (video)",  spec.get("output_video") or "(přeskočit)"),
@@ -595,6 +625,7 @@ def _build_args_from_spec(spec, base_args):
     # je nemá. Tím zajistíme, že args.blur_config apod. vždy existuje.
     fallback = {
         "blur_config": None,
+        "compute": None,
         "fps": None,
         "no_anonymize": False,
         "no_preview": False,
@@ -667,6 +698,12 @@ TRACKER_OPTS = [
     ("kalman", "Kalman", "nejrychlejší, predikuje pohyb (žádný vizuální model)"),
 ]
 
+COMPUTE_OPTS = [
+    ("auto", "auto-detect", "detekuje nejvýhodnější nastavení podle HW"),
+    ("gpu",  "GPU",         "využije grafickou kartu (CUDA / OpenCL)"),
+    ("cpu",  "CPU",         "pouze procesor, více vláken podle jader"),
+]
+
 BLUR_OPTS = [
     ("pixelate", "Pixelate (mozaika)", "dlaždice, silná anonymizace"),
     ("gaussian", "Gaussian blur",      "rozmazání přes ROI"),
@@ -676,7 +713,7 @@ BLUR_OPTS = [
 
 
 def cmd_interactive(args, log):
-    TOTAL = 13
+    TOTAL = 14
     _print_banner()
     spec = {}
 
@@ -717,23 +754,35 @@ def cmd_interactive(args, log):
         TRACKER_OPTS, default_key="csrt")
     _end_step()
 
-    # 5) Blur
-    _step(5, TOTAL, "Anonymizační metoda")
+    # 5) Compute mode
+    _step(5, TOTAL, "Výpočetní režim (GPU / CPU)")
+    print("  │ Nejprve zjistíme tvůj hardware…")
+    hw_report = format_hardware_report(detect_hardware())
+    for line in hw_report.split("\n"):
+        print(f"  │{line[2:]}")
+    recommended = recommend_compute_mode(detect_hardware(), "auto")
+    spec["compute"] = _pick(
+        "Jaký výpočetní režim preferuješ?",
+        COMPUTE_OPTS, default_key=recommended)
+    _end_step()
+
+    # 6) Blur
+    _step(6, TOTAL, "Anonymizační metoda")
     spec["blur_method"] = _pick(
         "Jakým způsobem anonymizovat rozpoznaný obličej?",
         BLUR_OPTS, default_key="pixelate")
     _end_step()
 
-    # 6) Výstup frames
-    _step(6, TOTAL, "Výstup — adresář pro JPEG snímky")
+    # 7) Výstup frames
+    _step(7, TOTAL, "Výstup — adresář pro JPEG snímky")
     spec["output_frames"] = _ask_path(
         title="Kam ukládat jednotlivé anonymizované snímky?",
         hint="Adresář bude vytvořen, pokud neexistuje.",
         allow_picker=False, default="data/output_frames")
     _end_step()
 
-    # 7) Výstup video
-    _step(7, TOTAL, "Výstup — video soubor (.mp4)")
+    # 8) Výstup video
+    _step(8, TOTAL, "Výstup — video soubor (.mp4)")
     out_vid = _ask_path(
         title="Volitelné. Kam uložit výsledné anonymizované video?",
         hint="Prázdné = přeskočit (uloží se jen snímky).",
@@ -741,8 +790,8 @@ def cmd_interactive(args, log):
     _end_step()
     spec["output_video"] = out_vid if out_vid else None
 
-    # 8) Výstup JSON
-    _step(8, TOTAL, "Výstup — JSON metadata")
+    # 9) Výstup JSON
+    _step(9, TOTAL, "Výstup — JSON metadata")
     out_json = _ask_path(
         title="Volitelné. Kam uložit per-frame JSON (detekce + track)?",
         hint="Prázdné = přeskočit.",
@@ -750,29 +799,29 @@ def cmd_interactive(args, log):
     _end_step()
     spec["output_json"] = out_json if out_json else None
 
-    # 9) Re-detekce
-    _step(9, TOTAL, "Re-detekce (drift korekce)")
+    # 10) Re-detekce
+    _step(10, TOTAL, "Re-detekce (drift korekce)")
     spec["redetect_every"] = _ask_int(
         title="Jak často (každých N framů) znovu spustit detektor?",
         hint="Menší hodnota = přesnější, ale pomalejší. Doporučeno 10–20.",
         default=15, min_val=1, max_val=1000)
     _end_step()
 
-    # 10) Preview
-    _step(10, TOTAL, "Preview okno")
+    # 11) Preview
+    _step(11, TOTAL, "Preview okno")
     spec["no_preview"] = not _ask_yn(
         "Zobrazit live náhledové okno během zpracování?", default=False)
     _end_step()
 
-    # 11) Bbox
-    _step(11, TOTAL, "Bounding boxy")
+    # 12) Bbox
+    _step(12, TOTAL, "Bounding boxy")
     spec["no_boxes"] = not _ask_yn(
         "Kreslit bounding boxy (zelený obdélník + label) do výstupu?",
         default=True)
     _end_step()
 
-    # 12) Start frame
-    _step(12, TOTAL, "Start frame")
+    # 13) Start frame
+    _step(13, TOTAL, "Start frame")
     sf = _ask_int(
         title="Od kterého framu (0-indexed) začít?",
         hint="0 = od začátku. Vhodné pro oříznutí úvodu videa.",
@@ -780,8 +829,8 @@ def cmd_interactive(args, log):
     _end_step()
     spec["start_frame"] = sf if sf > 0 else None
 
-    # 13) End frame
-    _step(13, TOTAL, "End frame")
+    # 14) End frame
+    _step(14, TOTAL, "End frame")
     ef = _ask_int(
         title="Na kterém framu (inclusive) skončit?",
         hint="Prázdné / 0 = do konce videa.",
@@ -838,6 +887,10 @@ def build_parser():
     p_run.add_argument("--redetect-every", type=int, default=None,
                        help="Re-detekce každých N framů (přepíše config)")
 
+    p_run.add_argument("--compute", default=None,
+                       choices=list(COMPUTE_MODES),
+                       help="Výpočetní režim: auto/gpu/cpu (přepíše config)")
+
     p_run.add_argument("--blur-method", "-b", default=None,
                        choices=list(BLUR_METHODS),
                        help="Anonymizační metoda (přepíše config)")
@@ -863,6 +916,10 @@ def build_parser():
     p_bi = sub.add_parser("blur-info",
                           help="Vypíše dostupné anonymizační metody")
     p_bi.set_defaults(func=cmd_blur_info)
+
+    p_hw = sub.add_parser("hardware-info",
+                          help="Zjistí a vypíše informace o hardwaru (GPU, CPU, OpenCL)")
+    p_hw.set_defaults(func=cmd_hardware_info)
 
     p_i = sub.add_parser("interactive", aliases=["i", "wizard"],
                          help="Interaktivní průvodce (krok za krokem)")

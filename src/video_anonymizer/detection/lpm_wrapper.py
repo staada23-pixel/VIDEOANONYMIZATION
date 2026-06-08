@@ -98,10 +98,10 @@ class LPMDetector:
             lpm.init_lpm(str(modules_dir))
             view = lpm.load_view_config(str(view_config))
             mod_cfg = LpmModuleConfig()
-            mod_cfg.ocr_compute_on_gpu = False
-            mod_cfg.ocr_num_threads = 1
-            mod_cfg.det_compute_on_gpu = False
-            mod_cfg.det_num_threads = 1
+            mod_cfg.det_compute_on_gpu = self.config.get("det_compute_on_gpu", False)
+            mod_cfg.det_num_threads = self.config.get("det_num_threads", 1)
+            mod_cfg.ocr_compute_on_gpu = self.config.get("ocr_compute_on_gpu", False)
+            mod_cfg.ocr_num_threads = self.config.get("ocr_num_threads", 1)
             midx = lpm.get_module_index(self.module_id, 0, 0)
             if midx < 0:
                 log.error("Module %d not found in %s", self.module_id, modules_dir)

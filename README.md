@@ -3,7 +3,7 @@
 Anonymizace obličejů ve videu. Pipeline: **detekce (LPM SDK / MediaPipe) → tracker (CSRT / KCF / Kalman) → anonymizace (pixelace / gaussian blur / blackout) → zápis snímků + videa + JSON metadat**.
 
 Dva nezávislé CLIs:
-- **Package CLI** (`python -m video_anonymizer.cli run`) — YAML konfigurace, MediaPipe i LPM, JSON metadata, 4 subcommands
+- **Package CLI** (`python -m video_anonymizer.cli run`) — YAML konfigurace, MediaPipe i LPM, JSON metadata, 5 subcommands
 - **Legacy CLI** (`python video_anonymizer.py`) — single-file, bez YAML, jen LPM, hardcoded defaulty
 
 ## Struktura
@@ -30,7 +30,8 @@ VIDEOANONYMIZATION/
 │   │   └── blur.py                # pixelate / gaussian / blackout / expand_bbox
 │   ├── utils/
 │   │   ├── logging.py             # Centrální logging setup
-│   │   └── overlap_fn.py          # IoU, NMS, is_likely_face
+│   │   ├── overlap_fn.py          # IoU, NMS, is_likely_face
+│   │   └── hardware.py            # Detekce GPU/CPU, doporučení compute režimu
 │   └── gui/
 │       └── detection_viewer.py    # PyQt6 GUI viewer (bbox vizualizace)
 ├── configs/
@@ -108,7 +109,8 @@ $env:PYTHONPATH = "src"    # PowerShell
 | `run` | Hlavní anonymizační pipeline |
 | `info` | Vypíše aktuální konfiguraci |
 | `blur-info` | Vypíše dostupné blur metody |
-| `interactive` / `i` / `wizard` | 13‑krokový interaktivní průvodce |
+| `interactive` / `i` / `wizard` | 14‑krokový interaktivní průvodce |
+| `hardware-info` | Zjistí a vypíše info o hardwaru (CPU, CUDA, OpenCL) + doporučí režim |
 
 ### Příklady `run`
 
@@ -154,6 +156,7 @@ python -m video_anonymizer.cli blur-info
 | `--tracker / -t` | `csrt` / `kcf` / `kalman` | z `config.yaml` |
 | `--detector / -d` | `lpm` / `mediapipe` | z `config.yaml` |
 | `--redetect-every` | Re‑detekce každých N framů | z `config.yaml` |
+| `--compute` | `auto` / `gpu` / `cpu` (auto‑detekce HW, nastavení vláken a OpenCL) | z `config.yaml` |
 | `--blur-method / -b` | `pixelate` / `gaussian` / `blackout` / `none` | z `config.yaml` |
 | `--blur-config` | YAML s per‑method blur parametry (merge do `blur:` sekce) | `configs/blur.yaml` |
 | `--no-anonymize` | Vypne anonymizaci (jen bbox overlay) | off |
@@ -211,6 +214,9 @@ Výstupní snímky: `output_video_frames/frame_%05d.jpg` (5 číslic, package CL
 ### configs/config.yaml
 
 ```yaml
+compute:
+  mode: auto               # auto | gpu | cpu
+  lpm_det_num_threads: 0    # 0 = auto (podle jader CPU)
 lpm:
   module_id: 802
   version: 7

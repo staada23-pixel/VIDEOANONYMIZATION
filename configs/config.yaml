@@ -1,9 +1,14 @@
+# Výpočetní výkon (GPU / CPU)
+compute:
+  mode: auto               # auto | gpu | cpu — auto-detekuje nejlepší volbu
+  lpm_det_num_threads: 0    # 0 = auto (podle jader CPU)
+
 # LPM SDK nastavení
 lpm:
   module_id: 802
   version: 7
-  det_compute_on_gpu: false
-  det_num_threads: 1
+  det_compute_on_gpu: false   # nastaví se automaticky podle compute.mode
+  det_num_threads: 1          # nastaví se automaticky podle compute.mode
   ocr_compute_on_gpu: false
   ocr_num_threads: 1
 
