@@ -1,0 +1,133 @@
+============================================================
+  VIDEO ANONYMIZER — Průvodce
+============================================================
+
+Co to dělá:
+  Detekuje obličeje ve videu, sleduje je (tracking) a anonymizuje
+  (mozaika/rozmazání/černý obdélník).
+
+============================================================
+1. SPUŠTĚNÍ
+============================================================
+
+  === Interaktivní menu (jednoduché) ===
+
+    python -m video_anonymizer
+
+  nebo dvojklik na run.bat / run.ps1.
+  Menu tě provede výběrem videa, detektoru a anonymizace.
+
+  === Příkazová řádka (rychlá) ===
+
+    python -m video_anonymizer --input video.mp4 --detector face
+
+============================================================
+2. ZÁKLADNÍ PŘÍKAZY
+============================================================
+
+  # Nejanonymizovanější použití (YuNet + mozaika + výstup)
+  python -m video_anonymizer --input video.mp4 --detector face ^
+    --anon-method mosaic --out-video vystup.mp4 --no-display
+
+  # Webcam v reálném čase
+  python -m video_anonymizer --input 0 --detector face --anon-method blur
+
+  # Jen boxy, žádná anonymizace (testování detekce)
+  python -m video_anonymizer --input video.mp4 --detector face --anon-method none
+
+  # Backfill — dopočítá chybějící detekce zpětně (doporučeno)
+  python -m video_anonymizer --input video.mp4 --detector face ^
+    --out-video vystup.mp4 --backfill --no-display
+
+============================================================
+3. DETEKTORY
+============================================================
+
+  --detector face   YuNet DNN — obličeje, bez HASP, DOPORUČENO
+  --detector lpm    LPM SDK — nejlepší, ale vyžaduje HASP dongle
+  --detector hog    HOG — celé postavy
+  --detector haar   Haar Cascade — obličeje, rychlý fallback
+  --detector auto   Zkusí LPM, pokud není → YuNet
+
+============================================================
+4. TRACKERY
+============================================================
+
+  --tracker KCF    Výchozí. Rychlý, s fallbackem proti driftu.
+  --tracker CSRT   Pomalejší ale přesnější (OpenCV).
+  --tracker MIL    Rychlejší, méně přesný (OpenCV).
+  --tracker VIT    Transformer (SOTA) — nejpřesnější, pomalý.
+
+============================================================
+5. ANONYMIZACE
+============================================================
+
+  --anon-method mosaic   Mozaika (pixelizace) — výchozí
+  --anon-method blur     Gaussovské rozmazání
+  --anon-method black    Černý obdélník
+  --anon-method solid    Jednobarevný obdélník
+  --anon-method none     Žádná (jen bounding boxy)
+
+  --anon-strength 1-50   Síla efektu (15 = výchozí)
+
+============================================================
+6. DALŠÍ MOŽNOSTI
+============================================================
+
+  --backfill       Po dokončení doplní chybějící detekce
+                   zpětně (analyzuje budoucnost a vyplní
+                   mezery v trackingu). Výrazně zlepší
+                   výsledek na bodycam záběrech.
+
+  --max-frames N   Zpracovat jen prvních N snímků.
+                   Užitečné pro rychlý test:
+                     --max-frames 300
+
+  --no-boxes       Nevykreslovat bounding boxy (jen
+                   anonymizovaný obraz).
+
+  --no-display     Nezobrazovat okno (jen ukládat).
+
+  --out-video      Cesta pro výstupní MP4.
+  --out-frames     Složka pro jednotlivé JPG snímky.
+
+  --dry-run        Rychlý test na demo videu (50 snímků).
+
+============================================================
+7. JAK TO FUNGUJE (stručně)
+============================================================
+
+  1) Načte video snímek po snímku
+  2) Detektor (YuNet/LPM/HOG) najde obličeje
+  3) ByteTracker přiřadí detekce k existujícím nebo
+     vytvoří nové tracky (ID každého obličeje)
+  4) KCF tracker sleduje obličej mezi detekcemi
+  5) CMC (Camera Motion Compensation) koriguje pohyb kamery
+  6) Anonymizer aplikuje mozaiku/blur na každý obličej
+  7) Volitelně: Backfill — po přečtení celého videa se
+     vrátí a lineární interpolací doplní boxy v místech,
+     kde tracking nestíhal
+  8) Uloží výstup (video/JPG)
+
+============================================================
+8. STRUKTURA SOUBORŮ
+============================================================
+
+  project/
+    ├── cli.py             Hlavní CLI entry point
+    ├── run.bat / run.ps1  Rychlé spuštění
+    ├── setup_venv.bat     Instalace (Windows)
+    ├── setup_venv.sh      Instalace (Linux)
+    ├── pyproject.toml     Závislosti (pip)
+    ├── src/video_anonymizer/   Zdrojový kód
+    │   ├── detection/     Detektory (YuNet, LPM, HOG, Haar)
+    │   ├── tracking/      Trackery (KCF, CSRT, MIL, VIT)
+    │   ├── io/            Čtení/zápis videa a snímků
+    │   └── utils/         Anonymizace, backfill, CMC, overlap
+    ├── configs/           YAML konfigurace
+    ├── models/            ONNX modely (auto-download)
+    ├── output/            Výstupní videa a snímky (gitignored)
+    ├── input/             Sem vlož testovací videa
+    └── tests/             Testy
+
+============================================================

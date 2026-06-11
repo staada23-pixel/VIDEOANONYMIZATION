@@ -358,11 +358,6 @@ def _run(args) -> int:
 
     return 0
 
-    output_path = getattr(args, "out_frames", "") or getattr(args, "out_video", "")
-    print_final_stats(frame_idx, saved_frames if writer else saved_video_frames, elapsed, output_path)
-
-    return 0
-
 
 # ── Re-render after backfill ────────────────────────────────────
 

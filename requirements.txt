@@ -1,0 +1,5 @@
+opencv-contrib-python>=4.5
+numpy>=1.21
+Pillow>=9.0
+cffi>=1.15
+PyYAML>=6.0
