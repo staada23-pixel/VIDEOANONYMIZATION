@@ -1,0 +1,6 @@
+high_thresh: 0.4
+low_thresh: 0.08
+max_lost_frames: 6
+iou_threshold: 0.08
+reinit_dist_thresh: 40
+min_box_size: 10

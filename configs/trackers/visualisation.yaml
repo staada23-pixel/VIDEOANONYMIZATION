@@ -1,12 +1,13 @@
-# Barvy v BGR formátu
 colors:
-  active: [0, 255, 0]      # zelená — detekovaný obličej
-  lost: [0, 0, 255]        # červená — tracker ztratil objekt
-  text: [255, 255, 255]    # bílá — text labelu
+  active:   [255, 0, 0]       # BGR — červená
+  low:      [255, 200, 0]     # BGR — žlutá
+  kcf_ok:   [255, 140, 0]     # BGR — oranžová
+  waiting:  [140, 40, 140]    # BGR — fialová
 
-# Label formát
-label:
-  show_id: true
-  show_confidence: true
-  show_lost_count: true
-  font_scale: 0.6
+box_thickness: 2              # null = automaticky podle rozlišení
+font_scale: 0.5
+show_id: true
+show_confidence: true
+show_psr: true
+show_lost_frames: true
+show_info_bar: true           # řádek nahoře s Frame/Det/KCF/CMC info

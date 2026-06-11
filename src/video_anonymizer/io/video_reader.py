@@ -1,110 +1,91 @@
-"""Video/image reading — oddělená I/O vrstva pro čtení snímků.
+"""Video reader - obal nad cv2.VideoCapture s iterátorem pres snimky."""
+from __future__ import annotations
 
-Podporované vstupy:
-  - video soubor (.mp4/.avi/.mov/.mkv)
-  - jeden obrázek (.jpg/.png/.bmp)
-  - adresář s obrázky (sekvence)
-  - webcam index (int)
+import os
 
-Samonosný modul: žádná závislost na LPM/trackeru/anonymizeru.
-"""
-from pathlib import Path
 import cv2
-import numpy as np
-
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
-VIDEO_EXTS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".m4v"}
 
 
-def detect_input_type(path):
-    """Vrátí 'video' | 'image' | 'image_dir' | 'webcam' | 'unknown'."""
-    if path is None:
-        return "webcam"
-    p = Path(path)
-    if not p.exists():
-        return "unknown"
-    if p.is_dir():
-        return "image_dir"
-    ext = p.suffix.lower()
-    if ext in VIDEO_EXTS:
-        return "video"
-    if ext in IMAGE_EXTS:
-        return "image"
-    return "unknown"
-
-
-def open_video(path):
-    """Zpětná kompatibilita: otevře video nebo webcam."""
-    if path is None:
-        return cv2.VideoCapture(0)
-    p = Path(path)
-    if not p.exists():
-        raise FileNotFoundError(f"Video not found: {p}")
-    return cv2.VideoCapture(str(p))
-
-
-def open_input(path, input_type=None):
-    """Dispatcher: vrátí (input_type, source_object).
-
-    Pro 'image' vrací numpy array jako statický zdroj (source = ndarray).
-    Pro 'image_dir' vrací (sorted_paths, first_image).
-    Pro 'video'/'webcam' vrací cv2.VideoCapture.
+class VideoReader:
     """
-    if input_type is None:
-        input_type = detect_input_type(path)
-
-    if input_type == "video" or input_type == "webcam":
-        cap = cv2.VideoCapture(0 if path is None else str(path))
-        return input_type, cap
-
-    if input_type == "image":
-        img = cv2.imread(str(path))
-        if img is None:
-            raise FileNotFoundError(f"Cannot read image: {path}")
-        return input_type, img
-
-    if input_type == "image_dir":
-        p = Path(path)
-        files = sorted([f for f in p.iterdir() if f.suffix.lower() in IMAGE_EXTS])
-        if not files:
-            raise FileNotFoundError(f"No images in directory: {path}")
-        return input_type, files
-
-    raise ValueError(f"Unknown input type for path: {path}")
-
-
-def iter_frames(source, input_type):
-    """Generator přes BGR snímky (numpy ndarray). Ukončí se při vyčerpání.
-
-    Pro input_type='image' vrátí jeden frame a skončí.
-    Pro input_type='image_dir' čte soubory jeden po druhém.
-    Pro input_type='video'/'webcam' čte z VideoCapture.
+    Cte video ze souboru nebo webcam zarizeni.
+    `source` muze byt:
+      - str (cesta k .mp4, .avi, ...)
+      - int (index kamery, typicky 0)
     """
-    if input_type == "image":
-        if isinstance(source, np.ndarray):
-            yield source
-        return
 
-    if input_type == "image_dir":
-        for path in source:
-            img = cv2.imread(str(path))
-            if img is not None:
-                yield img
-        return
+    def __init__(self, source):
+        # Pokud je to string ale vypada jako int (vc. zapornych), preved na int
+        if isinstance(source, str):
+            s = source.strip()
+            if s.lstrip("-").isdigit():
+                source = int(s)
 
-    if input_type in ("video", "webcam"):
-        while True:
-            ok, frame = source.read()
-            if not ok:
-                return
-            yield frame
+        # Pro string cesty: fallback hledani v par smysluplnych umistenich
+        if isinstance(source, str) and not os.path.exists(source):
+            here = os.path.dirname(os.path.abspath(__file__))
+            for candidate in (
+                os.path.join(os.getcwd(), source),
+                os.path.join(here, "..", "..", source),                  # project/
+                os.path.join(here, "..", "..", "..", source),            # EYEDEA PROJECT/
+            ):
+                if os.path.isfile(candidate):
+                    source = candidate
+                    break
 
+        self.source = source
+        self._cap = cv2.VideoCapture(source)
+        if not self._cap.isOpened():
+            raise RuntimeError(
+                f"Nelze otevrit video: {source!r}. "
+                f"Zkontroluj cestu nebo zda soubor existuje."
+            )
 
-def video_meta(cap):
-    """Vrátí dict s fps, width, height, total. Pro cap=VideoCapture."""
-    return {
-        "fps": cap.get(cv2.CAP_PROP_FPS) or 30.0,
-        "width": int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-        "height": int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-        "total": int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
-    }
+    # Metadata
+
+    @property
+    def fps(self) -> float:
+        v = float(self._cap.get(cv2.CAP_PROP_FPS))
+        return v if v > 0 else 25.0
+
+    @property
+    def width(self) -> int:
+        return int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+
+    @property
+    def height(self) -> int:
+        return int(self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    @property
+    def is_webcam(self) -> bool:
+        return isinstance(self.source, int)
+
+    def __len__(self) -> int:
+        if self.is_webcam:
+            return 0  # webcamy nemaji smysluplny frame_count
+        n = int(self._cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        return max(0, n)
+
+    def __iter__(self):
+        self._frame_idx = 0
+        return self
+
+    def __next__(self) -> tuple[int, "np.ndarray"]:
+        ok, frame = self._cap.read()
+        if not ok:
+            raise StopIteration
+        self._frame_idx += 1
+        return self._frame_idx, frame
+
+    def get_frame(self, frame_idx: int):
+        """Vrátí BGR frame na daném indexu (seek). None pokud neexistuje."""
+        if self._cap is None:
+            return None
+        self._cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
+        ret, frame = self._cap.read()
+        return frame if ret else None
+
+    def release(self) -> None:
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None

@@ -1,5 +1,35 @@
-# KCF (Kernelized Correlation Filter) tracker configuration
-# OpenCV implementace — rychlejší než CSRT, ale méně přesný při rotaci/škálování
-type: kcf
+# KCF Gaussian Kernel tracker parametry
+padding: 2.0          # kontext kolem boxu (násobek velikosti boxu)
+sigma: 0.5            # šířka Gaussian kernelu
+lambda: 0.0001        # L2 regularizace
+learning_rate: 0.075  # rychlost online učení
+output_sigma: 0.1     # šířka cílové Gaussian odpovědi
+interp_factor: 0.075  # interpolace modelu
 
-lost_timeout: 20
+# Drift detekce
+psr_threshold: 7.0    # PSR pod tímto = drift, čekej na LPM
+max_speed: 0.35       # max pohyb za snímek (násobek velikosti boxu)
+
+# Template-matching fallback (když KCF driftuje)
+tm_search_mult: 3.0       # šířka search okna jako násobek boxu (větší = chytí rychlejší pohyb)
+tm_min_score: 0.35        # min korelace pro akceptaci match
+tm_refresh_kcf: 0.15      # adaptace template při KCF trackingu
+tm_refresh_fallback: 0.30 # adaptace template při fallback trackingu
+tm_max_jump: 2.0          # max povolený skok (násobek boxu)
+
+# ByteTracker parametry
+high_thresh: 0.4
+low_thresh: 0.08
+max_lost_frames: 5
+iou_threshold: 0.2
+reinit_dist_thresh: 40
+
+# CMC parametry
+cmc_enabled: true
+cmc_scale: 0.4
+cmc_winsize: 21
+cmc_levels: 3
+cmc_iterations: 3
+
+# Obecné
+min_box_size: 10

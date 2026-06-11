@@ -1,16 +1,13 @@
 #!/bin/bash
-# Vytvoří virtuální prostředí a nainstaluje závislosti
-
-echo "Vytváření virtuálního prostředí..."
-python -m venv .venv
-
-echo "Aktivace..."
-source .venv/bin/activate 2>/dev/null || .venv\Scripts\activate
-
-echo "Instalace závislostí..."
+set -e
+echo "Vytváříme virtual environment..."
+python3 -m venv .venv
+source .venv/bin/activate
+echo "Instalujeme závislosti..."
 pip install --upgrade pip
-pip install opencv-contrib-python pillow filterpy cffi numpy pyyaml
-
-echo "Hotovo! Aktivuj prostředí příkazem:"
-echo "  source .venv/bin/activate  (Linux/Mac)"
-echo "  .venv\Scripts\activate     (Windows)"
+pip install opencv-contrib-python numpy Pillow cffi PyYAML
+echo ""
+echo "Hotovo! Aktivuj environment:"
+echo "  source .venv/bin/activate"
+echo "Pak spusť:"
+echo "  python -m video_anonymizer --input video.mp4"

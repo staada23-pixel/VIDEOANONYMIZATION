@@ -1,19 +1,8 @@
-# Virtual environment
 .venv/
-
-# Output data
-data/output_frames/
-data/output/
-output_video_frames/
-
-# Python cache
 __pycache__/
 *.pyc
-*.pyo
-
-# Video soubory
-*.mp4
-*.avi
-
-# IDE
-.vscode/
+*.egg-info/
+.pytest_cache/
+input/
+output/
+demo_output/

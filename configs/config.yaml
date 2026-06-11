@@ -1,60 +1,19 @@
-# Výpočetní výkon (GPU / CPU)
-compute:
-  mode: auto               # auto | gpu | cpu — auto-detekuje nejlepší volbu
-  lpm_det_num_threads: 0    # 0 = auto (podle jader CPU)
-
-# LPM SDK nastavení
 lpm:
-  module_id: 802
-  version: 7
-  det_compute_on_gpu: false   # nastaví se automaticky podle compute.mode
-  det_num_threads: 1          # nastaví se automaticky podle compute.mode
-  ocr_compute_on_gpu: false
-  ocr_num_threads: 1
+  sdk_root: null          # null = autodetekce; nebo absolutní cesta k LPM SDK rootu
+  module_index: 0
+  compute_on_gpu: false
+  num_threads: 1
 
-# Detekce
-detection:
-  backend: lpm              # lpm | mediapipe
-  min_confidence: 0.4
-  redetect_every_n: 15
-  min_face_ratio: 0.03
-  nms_iou_threshold: 0.3
-
-# Tracker
 tracker:
-  type: csrt                # csrt | kcf | kalman
-  lost_timeout: 20
-  # Per-tracker config (volitelné — přepíše configs/trackers/<type>.yaml)
-  config: configs/trackers/csrt.yaml
+  type: KCF               # KCF (jediná možnost zatím)
 
-# Anonymizace (blur)
-blur:
-  method: pixelate          # pixelate | gaussian | blackout | none
-  block: 18                 # pro pixelate
-  ksize: 51                 # pro gaussian (liché číslo)
-  color: [0, 0, 0]          # pro blackout (BGR)
-  expand: 0.15              # rozšíření bboxu před anonymizací (zlomek strany)
+detector:
+  confidence: 0.55        # min confidence pro YuNet (dříve 0.3 — pouštěl falešné detekce)
+  min_face_size: 30
+  max_aspect_ratio: 1.5
+  nms_threshold: 0.3      # dodatečný NMS po YuNetu (odstraní duplicitní boxy)
+  edge_margin: 0.02       # ghost boxy blíž než 2% od okraje = vyhodit
 
-# Vizualizace
-visualisation:
-  enabled: true
-  show_bbox: true
-  show_label: true
-  bbox_color: [0, 255, 0]   # BGR
-  bbox_thickness: 2
-  font_scale: 0.5
-  lost_bbox_color: [0, 0, 255]
-
-# Vstup
-input:
-  type: auto                # auto | video | image | image_dir
-  start_frame: 0
-  end_frame: null           # null = do konce
-
-# Výstup (lze kombinovat)
 output:
-  frames: data/output_frames
-  video: null               # např. data/output.mp4 (null = nezapisovat)
-  json: null                # např. data/output.json (null = nezapisovat)
-  jpg_quality: 90
-  video_codec: mp4v
+  save_only_with_detections: true
+  save_every_n_frames: 1

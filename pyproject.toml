@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video_anonymizer"
+version = "0.1.0"
+description = "Detekce a tracking osob ve videu (LPM SDK + KCF)"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-contrib-python>=4.5",
+    "numpy>=1.21",
+    "Pillow>=9.0",
+    "cffi>=1.15",
+    "PyYAML>=6.0",
+]
+
+[project.scripts]
+video-anonymizer = "video_anonymizer.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
